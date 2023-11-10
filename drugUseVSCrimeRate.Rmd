@@ -1,0 +1,283 @@
+---
+title: "Drug use VS Crime Rate"
+author: "Ian Williams"
+date: "4/27/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+Many people associate the use of drugs with high crime rate, stating that drug use causes criminal behavior. Throughout this study I hope to explore whether drug rates closely follow a model with crime rates, or whether these are two entirely separate entities. 
+While I don't believe that this study will prove or disprove anything, I am interested in the relationship between these two datasets.
+
+The rates in this project are calculated by dividing the total numbers by the population.
+
+#Importing
+First we must load the correct libraries
+
+```{r}
+library(tidyverse)
+```
+
+Next we must import the correct datasets which are enclosed in the project folder.
+
+First we will import the dataset on drug use
+```{r}
+drugs <- read.csv('drugs.csv')
+head(drugs)
+```
+This dataset describes use of various drugs for various different age ranges. 
+Next we will import the dataset on state crime
+```{r}
+crime <- read.csv('state_crime.csv')
+head(crime)
+```
+This dataset describes crime rates and totals for various different types of crime.
+
+
+Neither of these datasets are tidy. The drug use dataset is not tidy as not each variable has its own column. Each population has a different column, instead of population itself having its own column. As well as this, each drug has its own column. Therefore, this is a problem of the column names being values of variables, instead of names of variables. The crime dataset is questionable as to whether it is tidy or not. Each crime has its own column, which isn't ideal as this is once again an issue of the column name being a value of a variable.
+This issue will however be resolved later in the study.
+
+#Data Visualization
+
+Firstly we shall make a graph visualising the change in property burglary over time.
+
+```{r}
+ggplot(data = crime) +
+  geom_point(mapping = aes(x = Year, y = Data.Rates.Property.All, color = State))
+```
+We can quickly see that because of the sheer amount of observations across multiple variables, this data is incredibly difficult to view in this manner. While we could change our visualization such as via a line graph:
+
+```{r}
+ggplot(data = crime) +
+  geom_smooth(mapping = aes(x = Year, y = Data.Rates.Property.All, color = State), se = FALSE)
+```
+This still unfortunately doesn't solve our problem. We would have better luck separating the dataset, comparing crime rates of specific states.
+
+We will now only analyze the state of Texas
+```{r}
+texasCrime <- filter(crime, State == "Texas")
+```
+
+```{r}
+ggplot(data = texasCrime) +
+  geom_point(mapping = aes(x = Year, y = Data.Rates.Property.All))
+```
+As we can see this data rises until around late 1980s, reaches a peak, and then falls. At around the years 2013-2015 the rates plummet until they return to more normal levels in 2016. This could be for multiple reasons. The first reason could be that the data is flawed. The second reason could be that property crime really did decrease, in response to recovery to the 2008 housing market crash.
+
+Now we will compare the property related crime rates across all states by using the facet_wrap function
+```{r}
+ggplot(data = crime) + 
+  geom_point(mapping = aes(x = Year, y = Data.Rates.Property.All))+
+  facet_wrap(~State)
+```
+As we can see because we're once again using a very large dataset, this graph is incredibly difficult to read, but the general patterns are able to be seen. The most interesting states in terms of fluctuation of property crimes committed seem to be the District of Columbia, Arizona, and Hawaii. It also seems to be common for the early 2010s to have low outliers.
+
+
+Next we will create graphs from our drugs dataset.
+Firstly, we shall compare the rates of tobacco use in 2013 in the states of Hawaii, Arizona, and the District of Columbia.
+
+In order to do this we must create a new dataframe and filter out data that is not relevant to this operation:
+```{r}
+(drugs2002 <- drugs%>%
+            filter(State == "Hawaii" | State == "Arizona" | State == "District of Columbia", Year== 2013) %>%
+            select(State, Rates.Tobacco.Use.Past.Month.12.17, Rates.Tobacco.Use.Past.Month.18.25, Rates.Tobacco.Use.Past.Month.26.))
+```
+
+This is a bar chart representing tobacco use rates in the age demographic 12-17 years
+
+```{r}
+ggplot(data = drugs2002)+
+  geom_col(mapping = aes(x = State, y = Rates.Tobacco.Use.Past.Month.12.17))
+```
+This bar graph represents tobacco use rates in the age demographic 18-25
+
+```{r}
+ggplot(data = drugs2002)+
+  geom_col(mapping = aes(x = State, y = Rates.Tobacco.Use.Past.Month.18.25))
+```
+This bar graph represents tobacco use rates in the age demographic 26+
+
+```{r}
+ggplot(data = drugs2002)+
+  geom_col(mapping = aes(x = State, y = Rates.Tobacco.Use.Past.Month.26.))
+```
+
+In order to better study our drugs dataset, I will add new columns which represent total usage of substances across all age groups.
+
+These drugs will include: alcohol, cocaine, and marijuana. Tobacco cannot be included as there are no yearly records, only monthly records.
+```{r}
+(drugTotals <- drugs %>%
+              group_by(State) %>%
+              mutate(totalPopulation = Population.12.17 + Population.18.25 + Population.26., totalAlcoholRate = (Totals.Alcohol.Use.Disorder.Past.Year.18.25 + Totals.Alcohol.Use.Disorder.Past.Year.12.17 + Totals.Alcohol.Use.Disorder.Past.Year.26.)/(totalPopulation), totalMarijuanaRate = (Totals.Marijuana.Used.Past.Year.12.17 + Totals.Marijuana.Used.Past.Year.18.25 + Totals.Marijuana.Used.Past.Year.26.) / (totalPopulation), totalCocaineRate = (Totals.Illicit.Drugs.Cocaine.Used.Past.Year.12.17 + Totals.Illicit.Drugs.Cocaine.Used.Past.Year.18.25 + Totals.Illicit.Drugs.Cocaine.Used.Past.Year.26.)/(totalPopulation), totalDrugRate = totalAlcoholRate + totalMarijuanaRate + totalCocaineRate) %>%
+            
+              select(State, Year, totalPopulation, totalAlcoholRate, totalMarijuanaRate, totalCocaineRate, totalDrugRate))
+```
+```{r}
+select(drugTotals, totalDrugRate)
+```
+
+
+We can then explore this dataset with a facet_wrap function, comparing the usage of alcohol across all states:
+
+```{r}
+ggplot(data = drugTotals)+
+  geom_point(mapping = aes(x = Year, y = totalAlcoholRate))+
+  facet_wrap(~State)
+```
+
+As we can see from this visualization, all of the graphs are different but once again the District Of Columbia seems to fluctuate quite a lot.
+
+Now I will analyze the alcohol rate in comparison to the marijuana rate and cocaine rate for the District of Columbia.
+
+
+# Summary statistics
+First we will calculate the mean usage rate of cocaine across all states per year.
+
+```{r}
+drugTotalsMeanCocaine <- drugTotals %>%
+  group_by(Year) %>%
+  mutate(meanCocaineUse = mean(totalCocaineRate))
+```
+```{r}
+ggplot(data = drugTotalsMeanCocaine) +
+  geom_col(mapping = aes(x = Year, y = meanCocaineUse))
+```
+
+As we can see this use has risen and declined in a seemingly unpredictable manner.
+
+Next we will calculate the median cocaine use for each state across all years:
+
+```{r}
+(drugTotalsMedianCocaine <- drugTotals %>%
+                           group_by(State) %>%
+                           summarize(medianCocaineUse = median(totalCocaineRate)))
+```
+```{r}
+ggplot(data = drugTotalsMedianCocaine) +
+  geom_col(mapping = aes(x = State, y = medianCocaineUse))
+```
+As we can see there is a clear outlier here but because of how many columns there are, the names are all squashed together. Therefore, we will order the dataset by medianCocaineUse.
+
+```{r}
+arrange(drugTotalsMedianCocaine, desc(medianCocaineUse))
+```
+As we can see, the District of Columbia had the highest median usage of cocaine.
+
+Now let's look at crime rates in the District of Columbia in comparison to other states.
+First we must manipulate the dataframe so that we have total rate of crime for all states:
+
+```{r}
+(totalCrime <- select(crime, State, Year, Data.Totals.Property.All, Data.Totals.Violent.All, Data.Population) %>%
+           group_by(State, Year) %>%
+           mutate(crimeTotalRates = sum(Data.Totals.Property.All, Data.Totals.Violent.All)/Data.Population)) %>%
+           select(State, Year, crimeTotalRates)
+```
+Next we will calculate the median total crime rate for each state across all years:
+
+```{r}
+(totalCrimeMedian <- totalCrime %>%
+                     group_by(State) %>%
+                     summarize(medianCrimeRate = median(crimeTotalRates)) %>%
+                     arrange(desc(medianCrimeRate)))
+```
+As we can see, once again the District of Columbia is on top, with a fairly sizeable difference between it and the state with the second highest median crime rate, Arizona. This, however, is different than the state with the second highest median cocaine use, Vermont.
+
+Let's calculate median alchohol and marijuana usage as well per state.
+
+```{r}
+(drugTotalsMedianAlcohol <- drugTotals %>%
+                           group_by(State) %>%
+                           summarize(medianAlcoholUse = median(totalAlcoholRate)) %>%
+                           arrange(desc(medianAlcoholUse)))
+```
+Once again the District of Columbia is highest here, but the second highest has not been seen in the other drug medians, South Dakota. 
+
+```{r}
+(drugTotalsMedianMarijuana <- drugTotals %>%
+                           group_by(State) %>%
+                           summarize(medianMarijuanaUse = median(totalMarijuanaRate)) %>%
+                           arrange(desc(medianMarijuanaUse)))
+```
+The District of Columbia is again highest on this list, with another unpredictable second: Rhode Island. Vermont reappears in the top three however.
+
+We can try using a different measure of average, mean, for drug use:
+
+```{r}
+(drugTotalsMeanAlcohol <- drugTotals %>%
+                           group_by(State) %>%
+                           summarize(meanAlcoholUse = mean(totalAlcoholRate)) %>%
+                           arrange(desc(meanAlcoholUse)))
+```
+```{r}
+(drugTotalsMeanMarijuana <- drugTotals %>%
+                           group_by(State) %>%
+                           summarize(meanMarijuanaUse = mean(totalMarijuanaRate)) %>%
+                           arrange(desc(meanMarijuanaUse)))
+```
+```{r}
+(drugTotalsMeanCocaine <- drugTotals %>%
+                           group_by(State) %>%
+                           summarize(meanCocaineUse = mean(totalCocaineRate)) %>%
+                           arrange(desc(meanCocaineUse)))
+```
+While the District of Columbia remains at the top once again for all of these substances, the other 9 states in the top 10 are slightly different but still quite similar to the median calculations.
+
+
+#Correlation
+First we'll see if there is any correlation between alcohol and marijuana use. We'll use the drugTotals dataset
+
+```{r}
+cor.test(drugTotals$totalAlcoholRate, drugTotals$totalMarijuanaRate)
+```
+As we can see, the p-value is above 0.05 so this correlation is not valid. Even so, the correlation is estimated to be ~-0.016, meaning there is a very weak negative correlation between these two variables.
+
+```{r}
+library(corrgram)
+```
+
+```{r}
+corrgram(drugTotals)
+```
+There does seem to be a strong positive correlation between totalAlcoholRate and totalCocaineRate, however. Let's see if it's significant:
+```{r}
+cor.test(drugTotals$totalAlcoholRate, drugTotals$totalCocaineRate)
+```
+This does seem to be a valid but weak positive relationship.
+
+
+Finally lets see if there is any relationship between individual drug usage and crime rates.
+
+To do this, we need to merge two dataframes, drugTotals and totalCrime
+
+```{r}
+(drugsAndCrime <- merge(drugTotals, totalCrime, by = "State"))
+```
+We will explore the relationship between totalDrugRate and crimeTotalRates:
+
+```{r}
+cor.test(drugsAndCrime$totalDrugRate, drugsAndCrime$crimeTotalRates)
+```
+
+As we can see this correlation is not a coincidence, as the p-value is significantly below 0.05. This is a weak, positive, linear correlation.
+
+```{r}
+corrgram(drugsAndCrime)
+```
+The only strong negative correlations are between total alcohol rate and years in the drugTotals dataset. 
+
+Let's run a regression between totalDrugRate and crimeTotalRates:
+
+```{r}
+drugCrimeRegression <- lm(crimeTotalRates~totalDrugRate, data = drugsAndCrime)
+summary(drugCrimeRegression)
+```
+As we can see, this model is significant as well as the individual variables. The equation for this regression equation is:
+
+predicted crime = 2.303e-02 + 0.005e+01 * totalDrugRate
+
+
+#Conclusion
+
+This data was all very interesting to explore. While we'd have to dig deeper to truly understand the relationship between drug use and crime rates, it seems that there is at least somewhat of a positive correlation between drug use and crime rates. Whether this correlation is causation or not is up for debate, but there is at least a link between these two variables.
+The District of Columbia seemed to be the most interesting state to study, as it was most volatile in terms of crime rates and had the highest median and mean drug use rates. 
+Tobacco use was the least interesting to explore, as the rates fluctuated and weren't particularly indicative of anything.
