@@ -1,7 +1,7 @@
 # Drug Use VS Crime Rate in the US
 
 Many of the US population were shocked when Oregon decriminalized 
-possession of all illicit drugs in the fall of 2020 (“Drug”). Possessing 
+possession of all illicit drugs in the fall of 2020. Possessing 
 small quantities of illegal drugs in Oregon leads to a small fine instead 
 of probation, in the name of recovery and treatment towards those addicted 
 to drugs. Complaints arose across the country against this seemingly 
